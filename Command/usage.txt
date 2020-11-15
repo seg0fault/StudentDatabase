@@ -1,0 +1,8 @@
+Usage:
+quit;
+insert(<name>,<phone>,<group>);
+select * <argument>;
+delete <argument>;
+
+<argument> structure:
+--> where <field> <cond1> <statement1> [<op> <field> <cond2> <statement2>];
