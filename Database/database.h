@@ -16,11 +16,11 @@ int cmp_lt(int a, int b);
 int cmp_le(int a, int b);
 
 #include <ctime>
-#include "../Command/command.h"
-#include "../2list/2list.h"
-#include "../btree/btree.h"
-#include "../avl/avl.h"
-#include "../gtree/gtree.h"
+#include "command.h"
+#include "2list.h"
+#include "btree.h"
+#include "avl.h"
+#include "gtree.h"
 class database
 {
 private:
@@ -52,11 +52,11 @@ public:
     void delete_phone_tree(){phone_tree.btree_delete_tree(phone_tree.root);}
     int database_init(FILE *fp);
 
-    int get_command(command& com);
-    int        com_insert(command& com);
+    int get_command(command& com, int fd);
+    int        com_insert(command& com, int fd);
     int        com_select(command& com);
-    int        com_delete_selected();
-    int        com_print_selected(FILE *stream);
+    int        com_delete_selected(int fd);
+    int        com_print_selected(int fd);
 
 
     void get_sel_parameters(int position, int type, command& com);
@@ -67,7 +67,7 @@ public:
     }
     void add_to_selection(list_node *sel);
 
-    void print_all(int type); //type 0 - as list, type 1 - phone tree
+    void print_all(int fd, int type); //type 0 - as list, type 1 - phone tree
     void get_ostream(FILE *stream){ostream = stream;}
     void get_logstream(FILE *stream){logstream = stream;}
 };

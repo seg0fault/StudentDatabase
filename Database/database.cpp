@@ -14,19 +14,35 @@ int strcmp_ge(char* a, char* b){return (strcmp(a,b) >= 0);}
 int strcmp_lt(char* a, char* b){return (strcmp(a,b) < 0);}
 int strcmp_le(char* a, char* b){return (strcmp(a,b) <= 0);}
 
-void avl_tree::avl_select_node(avl_node *node)
+void avl_tree::avl_select_node(avl_node *node, int treetype)
 {
     if(!node) return;
-    for(list_node *it = node->key; it; it = it->next_eq_name)
-        parent_database->add_to_selection(it);
+    if(!treetype)
+    {
+        for(list_node *it = node->key; it; it = it->next_eq_name)
+            parent_database->add_to_selection(it);
+    }
+    else
+    {
+        for(list_node *it = node->key; it; it = it->next_eq_name_group)
+            parent_database->add_to_selection(it);
+    }
 }
 
 
-void btree::btree_select_key(list_node *node)
+void btree::btree_select_key(list_node *node, int typetree)
 {
     if(!node) return;
-    for(list_node *it = node; it; it = it->next_eq_phone)
-        parent_database->add_to_selection(it);
+    if(!typetree)
+    {
+        for(list_node *it = node; it; it = it->next_eq_phone)
+            parent_database->add_to_selection(it);
+    }
+    else
+    {
+        for(list_node *it = node; it; it = it->next_eq_phone_group)
+            parent_database->add_to_selection(it);
+    }
 }
 
 void gtree::gtree_select_key(node *select)
@@ -164,34 +180,36 @@ void database::add_to_selection(list_node *sel)
     sel_last = sel;
 }
 
-void database::print_all(int type)
+void database::print_all(int fd, int type)
 {
-    if(!data.head){fprintf(ostream, "Database empty!\n"); return;}
+    if(!data.head){send_signal(fd, SIG_EMPTY); return;}
     switch(type)
     {
-    case 0: data.print_list(ostream); break;
+    case 0: data.print_list(fd); break;
+/*
     case 1: name_tree.avl_print(ostream); fprintf(ostream ,"\n"); break;
     case 2: phone_tree.print_proc(ostream, phone_tree.root, 0, 0); fprintf(ostream ,"\n"); break;
     case 3: group_tree.print_proc(ostream, group_tree.root, 0, 0); fprintf(ostream ,"\n"); break;
+*/
     default: printf("Unknown type!\n");
     }
 }
 
-int database::get_command(command& com)
+int database::get_command(command& com, int fd)
 {
     switch(com.cmd)
     {
         case CMD_NONE: return 1;
-        case CMD_INSERT: return com_insert(com);
-        case CMD_SELECT: com_select(com); return com_print_selected(ostream);
-        case CMD_DELETE: com_select(com); return com_delete_selected();
-        case CMD_STOP: return 10;
-        case CMD_QUIT: return 10;
+        case CMD_INSERT: return com_insert(com, fd);
+        case CMD_SELECT: com_select(com); return com_print_selected(fd);
+        case CMD_DELETE: com_select(com); return com_delete_selected(fd);
+        case CMD_STOP: send_signal(fd, SIG_STOP); return 10;
+        case CMD_QUIT: send_signal(fd, SIG_STOP); return 5;
     }
     return 10;
 }
 
-int database::com_insert(command& com)
+int database::com_insert(command& com, int fd)
 {
     list_node *new_record = new list_node;
     list_node *eq_phone = nullptr;
@@ -207,7 +225,7 @@ int database::com_insert(command& com)
     }
     if((eq_phone = phone_tree.search_eq(phone_tree.root, new_record->phone)))
     {
-        for(; eq_phone; eq_phone = eq_phone->next_eq_phone) if(*eq_phone == *new_record) {delete new_record; return -1;}
+        for(; eq_phone; eq_phone = eq_phone->next_eq_phone) if(*eq_phone == *new_record) {delete new_record; send_signal(fd, SIG_EXIST); return -1;}
     }
     name_tree.avl_insert_key(new_record);
     phone_tree.btree_insert(new_record);
@@ -233,7 +251,7 @@ int database::com_select(command &com)
         {
         case 1: get_sel_parameters(2, com.second, com); name_tree.avl_select(com.statement1, com.c_name); break;
         case 2: get_sel_parameters(2, com.second, com); sscanf(com.statement1, "%d", &key); phone_tree.btree_select(key, com.c_phone); break;
-        case 3: clear_sel_parameters(); sscanf(com.statement1, "%d", &key); group_tree.gtree_select(key, com); break;
+        case 3: clear_sel_parameters(); sscanf(com.statement1, "%d", &key); group_tree.gtree_select(key, com, 0); break;
         default: printf("[!]Select type error; parcer sent wrong data\n");
         }
         clear_sel_parameters();
@@ -242,16 +260,16 @@ int database::com_select(command &com)
     {
         int key = 0;
         if(com.second == 3){com.swap_select();}
-        switch(com.first)
+        clear_sel_parameters();
+        switch(com.first) //просто поиск без доп условий
         {
-        case 1: get_sel_parameters(2, com.second, com); name_tree.avl_select(com.statement1, com.c_name); break;
-        case 2: get_sel_parameters(2, com.second, com); sscanf(com.statement1, "%d", &key); phone_tree.btree_select(key, com.c_phone); break;
-        case 3: clear_sel_parameters(); sscanf(com.statement1, "%d", &key); group_tree.gtree_select(key, com); break;
+        case 1: name_tree.avl_select(com.statement1, com.c_name); break;
+        case 2: sscanf(com.statement1, "%d", &key); phone_tree.btree_select(key, com.c_phone); break;
+        case 3: sscanf(com.statement1, "%d", &key); group_tree.gtree_select(key, com, 1); break;
         default: printf("[!]Select type error; parcer sent wrong data\n");
         }
- //       get_sel_parameters(1, com.first, com);
-        clear_sel_parameters();
-        switch(com.second)
+        get_sel_parameters(1, com.first, com);
+        switch(com.second) //xor на второе условие
         {
         case 1: name_tree.avl_select(com.statement1, com.c_name); break;
         case 2: sscanf(com.statement2, "%d", &key); phone_tree.btree_select(key, com.c_phone); break;
@@ -264,7 +282,7 @@ int database::com_select(command &com)
 }
 
 
-int database::com_delete_selected()
+int database::com_delete_selected(int fd)
 {
     if(sel_all)
     {
@@ -272,16 +290,12 @@ int database::com_delete_selected()
         name_tree.avl_delete_all();
         group_tree.gtree_delete_tree(group_tree.root);
         data.delete_list();
-        return -1;
+        return 0;
     }
-    if(!sel_start) {fprintf(ostream, "EMPTY DELETE\n\n"); return 1;}
-//    printf("To be deleted:\n");
-//    com_print_selected(stdout);
+    if(!sel_start) {send_signal(fd, SIG_EMPTY); return 1;}
     for(list_node *it = sel_start, *trash = sel_start; it;)
     {
         trash = it;
-//        if(it->prev) it->prev->print(stdout);
-//        else printf("1\n");
         it = it->next_selected;
         if(phone_tree.delete_key(trash))
             fprintf(stdout,"[!]Btree element delete error\n");
@@ -294,14 +308,18 @@ int database::com_delete_selected()
     return 0;
 }
 
-int database::com_print_selected(FILE *stream)
+int database::com_print_selected(int fd)
 {
-//    fprintf(stream, "SELECTION:\n");
-    if(sel_all){print_all(3); return 0;}
-    if(!sel_start) {fprintf(ostream, "EMPTY PRINT\n\n"); return 1;}
-//    fprintf(stream, "|        NAME |     PHONE |GROUP|\n");
-    for(list_node *it = sel_start; it; it = it->next_selected) it->print(stream);
-    fprintf(stream, "\n");
+    if(sel_all){print_all(fd, 0); return 0;}
+    if(!sel_start) {send_signal(fd, SIG_EMPTY); return 1;}
+    for(list_node *it = sel_start; it; it = it->next_selected)
+    {
+#ifdef LESS
+        it->print_enh_client(fd);
+#else
+        it->print_client(fd);
+#endif
+    }
     return 0;
 }
 
