@@ -35,4 +35,14 @@ enum op_type
     OP_OR = 2
 };
 
+enum sig_type
+{
+    SIG_DONE  = -1,
+    SIG_EXIST = -2,
+    SIG_STOP  = -3,
+    SIG_EMPTY = -4,
+    SIG_SYNTAX = -5,
+    SIG_SEGV = 0
+};
+
 #endif
