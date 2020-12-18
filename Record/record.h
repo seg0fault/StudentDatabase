@@ -1,10 +1,15 @@
 #ifndef RECORD_H
 #define RECORD_H
 
-#include <cstdio>
+#include <stdarg.h>
+#include <unistd.h>
+#include <stdio.h>
 #include <cstring>
 
-#define LEN 100
+#define LEN 1234
+
+int clprintf(int fd, const char *format, ...);
+int send_signal(int fd, int sig);
 
 class record
 {
@@ -30,6 +35,9 @@ public:
     int record_init_file(FILE *fp);
 
     void print(FILE *stream);
+    void print_client(int fd);
+    void print_enh(FILE *stream);
+    void print_enh_client(int fd);
 
     record& operator=(const record& x);
     record& operator=(record&& x);

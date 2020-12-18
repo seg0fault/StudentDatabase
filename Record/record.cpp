@@ -1,8 +1,52 @@
 #include "record.h"
+#define CPBUF 60
+int clprintf(int fd, const char *format, ...)
+{
+    va_list ap;
+    va_start(ap, format);
+    char buf[CPBUF];
+    int ret, nbytes, i;
+    if((ret = vsnprintf(buf, CPBUF, format, ap)) < 0)
+    {
+        printf("[!]Smth(1) wrong in client print\n");
+        return -1;
+    }
+    int len = ret + 1;
+    if (write(fd, &len, sizeof (int)) != (int) sizeof (int)){printf("Could not write len to socket %d\n", fd); return -2;}
+    for(i = 0; len > 0; i += nbytes, len -= nbytes)
+    {
+        nbytes = write(fd, buf + i, len);
+        if(nbytes <= 0){va_end(ap); printf("[!]Smth(2) wrong in clent print\n"); return -2;}
+    }
+    va_end(ap);
+    return ret;
+}
+
+int send_signal(int fd, int sig)
+{
+    if (write(fd, &sig, sizeof (int)) != (int) sizeof (int))
+        {printf("Could not write signal to socket %d\n", fd); return -2;}
+    return 0;
+}
 
 void record::print(FILE *stream)
 {
     fprintf(stream, "%12s %10d %4d\n", name, phone, group);
+}
+
+void record::print_enh(FILE *stream)
+{
+    if(strcmp(name, "Student") == 0) fprintf(stream, "%12s %10d %4d\n", name, phone, group);
+}
+
+void record::print_client(int fd)
+{
+    clprintf(fd, "%12s %10d %4d", name, phone, group);
+}
+
+void record::print_enh_client(int fd)
+{
+    if(strcmp(name, "Student") == 0) clprintf(fd, "%12s %10d %4d", name, phone, group);
 }
 
 void record::destroy()
