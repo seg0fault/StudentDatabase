@@ -1,7 +1,7 @@
 #ifndef LIST_NODE
 #define LIST_NODE
 
-#include "../Record/record.h"
+#include "record.h"
 
 
 class list_node: public record
